@@ -74,7 +74,11 @@ final class HUDNode: SKNode {
     }
 
     private func compactChip(state: MatchState, heldRemaining: TimeInterval?) -> String? {
-        if let heldRemaining, state.ballOwner?.side == .home, heldRemaining <= 1.05, heldRemaining > 0 {
+        if let heldRemaining,
+           heldRemaining <= 1.05,
+           heldRemaining > 0,
+           state.ballOwner != nil,
+           state.possessionSide == .home {
             return "HELD BALL"
         }
         guard let cue = state.cueMessage, !cue.isEmpty else { return nil }

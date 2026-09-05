@@ -41,13 +41,16 @@ final class AISystem {
         let ballPoint = context.ball.courtPosition
         let hoop = context.geometry.hoopPosition(for: athlete.id.side.opposing)
 
-        // Tip-off / centre pass: hold lanes. Do not collapse onto the centre line.
         if context.state.phase == .centrePass {
             return formation
         }
 
         if athlete.hasBall {
             return formation
+        }
+
+        if context.isBallLoose {
+            return contestLooseBall(athlete: athlete, ballPoint: ballPoint, formation: formation, context: context)
         }
 
         if athlete.id.side == .away {
@@ -69,6 +72,21 @@ final class AISystem {
             }
         }
         return blend(formation, ballPoint, t: 0.12)
+    }
+
+    private func contestLooseBall(athlete: Athlete, ballPoint: CGPoint, formation: CGPoint, context: MatchContext) -> CGPoint {
+        let zone = athlete.id.role.legalZone(in: context.geometry, team: athlete.id.side)
+        let nearestInZone = context.geometry.nearestPoint(in: zone, to: ballPoint)
+
+        let distanceToZoneEdge = hypot(nearestInZone.x - ballPoint.x, nearestInZone.y - ballPoint.y)
+        let canReachBall = zone.contains(ballPoint) || distanceToZoneEdge < 30
+
+        if canReachBall {
+            let target = zone.contains(ballPoint) ? ballPoint : nearestInZone
+            return blend(target, formation, t: 0.1)
+        }
+
+        return blend(formation, ballPoint, t: 0.25)
     }
 
     private func markPoint(of target: Athlete, hoop: CGPoint, athlete: Athlete, context: MatchContext, laneX: CGFloat) -> CGPoint {

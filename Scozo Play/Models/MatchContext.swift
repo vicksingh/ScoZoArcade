@@ -12,6 +12,7 @@ final class MatchContext {
     var events: [MatchEvent]
     var boardRect: CGRect
     var lastHumanAim: CGVector
+    var passTarget: PlayerID?
 
     init(config: GameConfig) {
         self.config = config
@@ -38,15 +39,16 @@ final class MatchContext {
                     athletes[id] = Athlete(id: id, courtPosition: point, facing: facing)
                 }
             }
+            applyCentrePassPossession()
         } else {
             for athlete in athletes.values {
                 athlete.courtPosition = athlete.id.role.defaultFormation(in: geometry, team: athlete.id.side)
                 athlete.velocity = .zero
                 athlete.targetPoint = nil
                 athlete.facing = athlete.id.side == .home ? .pi / 2 : -.pi / 2
+                athlete.hasBall = false
             }
         }
-        applyCentrePassPossession()
     }
 
     func applyCentrePassPossession() {
@@ -74,8 +76,57 @@ final class MatchContext {
     }
 
     func carrier() -> Athlete? {
+        guard let owner = state.ballOwner,
+              let athlete = athletes[owner],
+              athlete.hasBall,
+              !ball.isInFlight,
+              ball.flight != .loose else {
+            return nil
+        }
+        return athlete
+    }
+
+    func claimedOwner() -> Athlete? {
         guard let owner = state.ballOwner else { return nil }
         return athletes[owner]
+    }
+
+    var isBallLoose: Bool {
+        ball.flight == .loose && state.ballOwner == nil
+    }
+
+    func setPassTarget(_ target: PlayerID?) {
+        passTarget = target
+    }
+
+    func clearPassTarget() {
+        passTarget = nil
+    }
+
+    func validPassTargets() -> [Athlete] {
+        guard let carrier = carrier(), carrier.id.side == .home else { return [] }
+        return roster(for: .home)
+            .filter { $0.id != carrier.id }
+            .filter { teammate in
+                let dist = carrier.courtPosition.distance(to: teammate.courtPosition)
+                return dist > 8 && dist <= config.passMaxRange
+            }
+    }
+
+    func isValidPassTarget(_ id: PlayerID) -> Bool {
+        validPassTargets().contains { $0.id == id }
+    }
+
+    func nearestHomeWhoCanReach(point: CGPoint) -> Athlete? {
+        roster(for: .home)
+            .filter { athlete in
+                let zone = athlete.id.role.legalZone(in: geometry, team: .home)
+                return zone.contains(point) || geometry.nearestPoint(in: zone, to: point).distance(to: point) < 60
+            }
+            .min { a, b in
+                a.courtPosition.distance(to: point) < b.courtPosition.distance(to: point)
+            }
+        ?? nearest(to: point, side: .home)
     }
 
     func nearest(to point: CGPoint, side: TeamSide?, excluding: PlayerID? = nil) -> Athlete? {
@@ -108,5 +159,11 @@ final class MatchContext {
         if case .hint(let text) = kind {
             state.cueMessage = text
         }
+    }
+}
+
+extension CGPoint {
+    func distance(to other: CGPoint) -> CGFloat {
+        hypot(x - other.x, y - other.y)
     }
 }

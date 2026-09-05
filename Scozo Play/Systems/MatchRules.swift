@@ -75,14 +75,16 @@ struct MatchRules {
         }
         if state.quarter >= state.quarterCount {
             if state.winningSide == nil {
-                // Sudden-death mini-period. Documented above.
                 state.overtimeActive = true
                 state.quarter = state.quarterCount
                 context.resetRosterToFormation()
                 state.startQuarter(state.quarterCount, config: context.config, centre: state.centrePassSide)
+                applyCentreOwner(&state, context: context)
                 state.overtimeActive = true
                 state.phase = .centrePass
                 state.cueMessage = "OVERTIME"
+                context.state = state
+                ensureInitialSelection(context: context)
             } else {
                 state.finishMatch(reason: .regulation)
             }
@@ -119,6 +121,7 @@ struct MatchRules {
         }
         state.ballOwner = owner
         state.possessionSide = owner.side
+        state.heldBallElapsed = 0
     }
 
     private func shouldApplyMercy(context: MatchContext) -> Bool {
@@ -133,9 +136,26 @@ struct MatchRules {
         let current = context.selectedHome()
         let ballPoint = context.ball.courtPosition
 
-        if let carrier = context.carrier(), carrier.id.side == .home, current?.id != carrier.id {
+        if let carrier = context.carrier(),
+           carrier.id.side == .home,
+           carrier.hasBall,
+           current?.id != carrier.id {
             applySelection(carrier.id, context: context)
             return
+        }
+
+        if let homeBallHolder = home.first(where: { $0.hasBall }),
+           current?.id != homeBallHolder.id {
+            applySelection(homeBallHolder.id, context: context)
+            return
+        }
+
+        if context.isBallLoose {
+            if let nearestToBall = context.nearestHomeWhoCanReach(point: ballPoint),
+               current?.id != nearestToBall.id {
+                applySelection(nearestToBall.id, context: context)
+                return
+            }
         }
 
         if let current {
@@ -173,10 +193,42 @@ struct MatchRules {
             }
             return
         }
+
+        if let carrier = context.carrier(), carrier.id.side == .home {
+            applySelection(carrier.id, context: context)
+            return
+        }
+
+        if let homeBallHolder = context.roster(for: .home).first(where: { $0.hasBall }) {
+            applySelection(homeBallHolder.id, context: context)
+            return
+        }
+
         if let owner = context.state.ballOwner, owner.side == .home {
             applySelection(owner, context: context)
+            return
+        }
+
+        let spot = context.ball.courtPosition
+        if let nearest = context.nearestHomeWhoCanReach(point: spot) {
+            applySelection(nearest.id, context: context)
         } else if let c = context.athletes[PlayerID(side: .home, role: .c)] {
             applySelection(c.id, context: context)
+        }
+    }
+
+    func handleLooseBallAutoSwitch(context: MatchContext) {
+        guard context.isBallLoose else { return }
+        guard let current = context.selectedHome() else { return }
+
+        let ballPoint = context.ball.courtPosition
+        let distanceToBall = current.courtPosition.distance(to: ballPoint)
+
+        if distanceToBall > context.config.looseBallAutoSwitchThreshold {
+            if let nearestToBall = context.nearestHomeWhoCanReach(point: ballPoint),
+               nearestToBall.id != current.id {
+                applySelection(nearestToBall.id, context: context)
+            }
         }
     }
 }

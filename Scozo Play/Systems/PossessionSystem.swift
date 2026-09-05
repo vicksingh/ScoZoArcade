@@ -1,14 +1,21 @@
 import Foundation
 
 /// Keeps ball ownership, hasBall flags, and ball node in lockstep.
+/// Single source of truth: state.ballOwner is canonical when the ball is held.
 struct PossessionSystem {
     func enforce(context: MatchContext) {
         if context.ball.isInFlight {
-            for athlete in context.athletes.values {
-                athlete.hasBall = false
-            }
+            clearAllHasBall(context: context)
             context.state.ballOwner = nil
             context.state.possessionSide = nil
+            return
+        }
+
+        if context.ball.flight == .loose {
+            clearAllHasBall(context: context)
+            context.state.ballOwner = nil
+            context.state.possessionSide = nil
+            context.ball.owner = nil
             return
         }
 
@@ -16,7 +23,6 @@ struct PossessionSystem {
             for athlete in context.athletes.values {
                 athlete.hasBall = athlete.id == ownerID
             }
-            owner.hasBall = true
             context.ball.owner = ownerID
             context.ball.flight = .none
             let face = owner.facingVector
@@ -28,13 +34,18 @@ struct PossessionSystem {
             return
         }
 
-        for athlete in context.athletes.values {
-            athlete.hasBall = false
-        }
+        clearAllHasBall(context: context)
         context.state.ballOwner = nil
         context.state.possessionSide = nil
+        context.ball.owner = nil
         if context.ball.flight != .loose {
             context.ball.drop(at: context.ball.courtPosition)
+        }
+    }
+
+    private func clearAllHasBall(context: MatchContext) {
+        for athlete in context.athletes.values {
+            athlete.hasBall = false
         }
     }
 
@@ -44,13 +55,14 @@ struct PossessionSystem {
                 || context.state.phase == .overtime else {
             return false
         }
-        guard !context.ball.isInFlight else { return false }
+        guard !context.ball.isInFlight, context.ball.flight != .loose else { return false }
         guard let selected = context.selectedHome() else { return false }
         return selected.hasBall && context.state.ballOwner == selected.id
     }
 
     func selectedCanShoot(context: MatchContext, shooting: ShootSystem) -> Bool {
         guard context.state.phase == .inPlay || context.state.phase == .overtime else { return false }
+        guard !context.ball.isInFlight, context.ball.flight != .loose else { return false }
         guard let selected = context.selectedHome() else { return false }
         return selected.hasBall && context.state.ballOwner == selected.id && shooting.canShoot(selected, context: context)
     }

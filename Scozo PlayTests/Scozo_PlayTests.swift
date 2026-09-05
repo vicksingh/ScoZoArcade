@@ -183,4 +183,242 @@ struct ScoZoArcadeTests {
         #expect(GameConfig.production.quarterDuration == 150)
         #expect(GameConfig.production.quarterCount == 4)
     }
+
+    // MARK: - Possession Invariant Tests
+
+    @Test func possessionInvariantsSingleOwner() {
+        let context = MatchContext(config: .debug)
+        PossessionSystem().enforce(context: context)
+        let hasBallCount = context.athletes.values.filter(\.hasBall).count
+        #expect(hasBallCount <= 1, "At most one player can have the ball")
+        if let owner = context.state.ballOwner {
+            #expect(context.athletes[owner]?.hasBall == true, "Owner must have hasBall=true")
+            #expect(context.state.possessionSide == owner.side, "possessionSide must match owner's side")
+        }
+    }
+
+    @Test func possessionClearedWhenBallLoose() {
+        let context = MatchContext(config: .debug)
+        context.ball.drop(at: CGPoint(x: 100, y: 100))
+        PossessionSystem().enforce(context: context)
+        #expect(context.state.ballOwner == nil, "No owner when ball is loose")
+        #expect(context.state.possessionSide == nil, "No possession side when ball is loose")
+        #expect(context.athletes.values.allSatisfy { !$0.hasBall }, "No player has ball when loose")
+    }
+
+    @Test func possessionClearedWhenBallInFlight() {
+        let context = MatchContext(config: .debug)
+        let homeC = context.athletes[PlayerID(side: .home, role: .c)]!
+        context.ball.launch(
+            kind: .pass,
+            from: homeC.courtPosition,
+            to: CGPoint(x: 100, y: 200),
+            duration: 0.5,
+            lift: 20
+        )
+        PossessionSystem().enforce(context: context)
+        #expect(context.state.ballOwner == nil, "No owner when ball in flight")
+        #expect(context.athletes.values.allSatisfy { !$0.hasBall }, "No player has ball in flight")
+    }
+
+    @Test func carrierReturnsNilWhenBallLoose() {
+        let context = MatchContext(config: .debug)
+        context.state.setPossession(owner: PlayerID(side: .home, role: .c))
+        context.athletes[PlayerID(side: .home, role: .c)]?.hasBall = true
+        context.ball.drop(at: CGPoint(x: 100, y: 100))
+        #expect(context.carrier() == nil, "carrier() should return nil when ball is loose")
+    }
+
+    @Test func carrierReturnsNilWhenHasBallFalse() {
+        let context = MatchContext(config: .debug)
+        context.state.setPossession(owner: PlayerID(side: .home, role: .c))
+        context.athletes[PlayerID(side: .home, role: .c)]?.hasBall = false
+        context.ball.flight = .none
+        #expect(context.carrier() == nil, "carrier() should return nil when hasBall is false")
+    }
+
+    @Test func heldBallTimerOnlyTicksWithVerifiedCarrier() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+        context.state.setPossession(owner: PlayerID(side: .home, role: .c))
+        context.athletes[PlayerID(side: .home, role: .c)]?.hasBall = false
+        context.ball.flight = .none
+        let initialElapsed = context.state.heldBallElapsed
+        FootworkSystem().update(context: context, dt: 0.5)
+        #expect(context.state.heldBallElapsed == initialElapsed, "Timer should not tick without verified carrier")
+    }
+
+    @Test func goalResetSetsPossessionCorrectly() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+
+        MatchRules().awardGoal(to: .away, context: context)
+        #expect(context.state.phase == .goalScored)
+        #expect(context.state.ballOwner == nil)
+
+        context.state.phaseElapsed = context.config.goalResetDuration + 0.1
+        MatchRules().tickPhase(context: context, dt: 0.016)
+
+        #expect(context.state.phase == .centrePass)
+        #expect(context.state.centrePassSide == .home, "After away scores, home gets centre pass")
+        #expect(context.state.ballOwner == PlayerID(side: .home, role: .c))
+        #expect(context.athletes[PlayerID(side: .home, role: .c)]?.hasBall == true)
+        #expect(context.athletes.values.filter(\.hasBall).count == 1)
+    }
+
+    @Test func switchPrefersActualBallCarrier() {
+        let context = MatchContext(config: .debug)
+        PossessionSystem().enforce(context: context)
+        MatchRules().applySelection(PlayerID(side: .home, role: .gk), context: context)
+        #expect(context.selectedHome()?.id.role == .gk)
+
+        MatchRules().selectHomePlayer(context: context)
+        #expect(context.selectedHome()?.id.role == .c, "SWITCH should select ball carrier (home C)")
+    }
+
+    @Test func selectedCanPassOnlyWhenHoldingBall() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+        let homeC = PlayerID(side: .home, role: .c)
+        context.state.setPossession(owner: homeC)
+        context.athletes[homeC]?.hasBall = true
+        context.ball.flight = .none
+        MatchRules().applySelection(homeC, context: context)
+
+        #expect(PossessionSystem().selectedCanPass(context: context), "Can pass when holding ball")
+
+        MatchRules().applySelection(PlayerID(side: .home, role: .gd), context: context)
+        #expect(!PossessionSystem().selectedCanPass(context: context), "Cannot pass when not holding ball")
+    }
+
+    // MARK: - Loose Ball Handling Tests
+
+    @Test func isBallLooseDetectsLooseState() {
+        let context = MatchContext(config: .debug)
+        #expect(!context.isBallLoose, "Initially ball is not loose")
+
+        context.ball.drop(at: CGPoint(x: 100, y: 100))
+        context.state.clearPossession()
+        #expect(context.isBallLoose, "Ball should be loose after drop")
+    }
+
+    @Test func switchSelectsNearestToBallWhenLoose() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+
+        let looseBallPos = CGPoint(x: 180, y: 200)
+        context.ball.drop(at: looseBallPos)
+        context.state.clearPossession()
+        PossessionSystem().enforce(context: context)
+
+        MatchRules().applySelection(PlayerID(side: .home, role: .gs), context: context)
+        #expect(context.selectedHome()?.id.role == .gs)
+
+        MatchRules().selectHomePlayer(context: context)
+        let selected = context.selectedHome()
+        #expect(selected != nil)
+        #expect(selected?.id.role != .gs, "Should not stay on GS who is far from loose ball")
+    }
+
+    @Test func autoSwitchTriggersWhenBallBecomesLooseAndFar() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+
+        let gsPos = context.athletes[PlayerID(side: .home, role: .gs)]!.courtPosition
+        let looseBallPos = CGPoint(x: gsPos.x, y: gsPos.y - 300)
+        context.ball.drop(at: looseBallPos)
+        context.state.clearPossession()
+
+        MatchRules().applySelection(PlayerID(side: .home, role: .gs), context: context)
+        let distanceToBall = hypot(gsPos.x - looseBallPos.x, gsPos.y - looseBallPos.y)
+        #expect(distanceToBall > context.config.looseBallAutoSwitchThreshold)
+
+        MatchRules().handleLooseBallAutoSwitch(context: context)
+        let selected = context.selectedHome()
+        #expect(selected?.id.role != .gs, "Auto-switch should move away from far GS")
+    }
+
+    @Test func nearestHomeWhoCanReachConsidersZones() {
+        let context = MatchContext(config: .debug)
+        let midCourtPos = context.geometry.centreMark
+        let nearest = context.nearestHomeWhoCanReach(point: midCourtPos)
+        #expect(nearest != nil, "Should find a home player who can reach mid court")
+        #expect(nearest?.id.role == .c || nearest?.id.role == .ga || nearest?.id.role == .gd,
+                "Mid court should be reachable by C, GA, or GD")
+    }
+
+    @Test func pickupWhenPlayerTouchesLooseBall() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+
+        let homeC = context.athletes[PlayerID(side: .home, role: .c)]!
+        context.ball.drop(at: homeC.courtPosition)
+        context.state.clearPossession()
+
+        PassSystem().update(context: context, dt: 0.016)
+
+        #expect(context.state.ballOwner == homeC.id, "Player touching loose ball should gain possession")
+        #expect(homeC.hasBall, "Player should have ball after pickup")
+        #expect(!context.isBallLoose, "Ball should no longer be loose after pickup")
+    }
+
+    // MARK: - Pass Targeting Tests
+
+    @Test func validPassTargetsExcludesCarrier() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+        PossessionSystem().enforce(context: context)
+
+        let targets = context.validPassTargets()
+        let carrierID = context.carrier()?.id
+        #expect(carrierID != nil, "Should have a carrier")
+        #expect(!targets.contains { $0.id == carrierID }, "Carrier should not be in pass targets")
+        #expect(targets.count > 0, "Should have valid pass targets")
+    }
+
+    @Test func setPassTargetStoresTarget() {
+        let context = MatchContext(config: .debug)
+        let targetID = PlayerID(side: .home, role: .ga)
+        context.setPassTarget(targetID)
+        #expect(context.passTarget == targetID, "Pass target should be set")
+        context.clearPassTarget()
+        #expect(context.passTarget == nil, "Pass target should be cleared")
+    }
+
+    @Test func isValidPassTargetChecksRange() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+        PossessionSystem().enforce(context: context)
+
+        guard let carrier = context.carrier() else {
+            Issue.record("No carrier")
+            return
+        }
+
+        for target in context.validPassTargets() {
+            let dist = carrier.courtPosition.distance(to: target.courtPosition)
+            #expect(dist <= context.config.passMaxRange, "Valid target should be in range")
+            #expect(dist > 8, "Valid target should not be too close")
+        }
+    }
+
+    @Test func passUsesExplicitTargetWhenSet() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+        PossessionSystem().enforce(context: context)
+
+        let targets = context.validPassTargets()
+        guard let target = targets.first else {
+            Issue.record("No valid targets")
+            return
+        }
+
+        context.setPassTarget(target.id)
+        #expect(context.passTarget == target.id, "Target should be set before pass")
+
+        PassSystem().attemptPass(context: context)
+
+        #expect(context.passTarget == nil, "Pass target should be cleared after pass")
+        #expect(context.ball.isInFlight, "Ball should be in flight after pass")
+    }
 }
