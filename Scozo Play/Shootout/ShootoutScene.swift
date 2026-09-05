@@ -7,8 +7,8 @@ final class ShootoutScene: SKScene {
     private let context: ShootoutContext
     private let court: ShootoutCourtNode
     private let hoop: HoopNode
-    private let ballNode: BallNode
-    private var playerNodes: [PlayerID: PlayerNode] = [:]
+    private let ballNode: ShootoutBallNode
+    private var playerNodes: [PlayerID: ShootoutPlayerNode] = [:]
     private let world = SKNode()
     private let fx = SKNode()
     private let hud: ShootoutHUD
@@ -37,7 +37,7 @@ final class ShootoutScene: SKScene {
         self.context = ShootoutContext(config: config, homeClub: homeClub, awayClub: awayClub)
         self.court = ShootoutCourtNode(geometry: context.geometry, config: config)
         self.hoop = HoopNode(side: .home, config: config)
-        self.ballNode = BallNode(config: config)
+        self.ballNode = ShootoutBallNode(config: config)
         self.hud = ShootoutHUD(config: config)
         self.controls = VirtualControlsNode(config: config, input: context.input)
         self.overlays = OverlayLayer(config: config)
@@ -71,7 +71,7 @@ final class ShootoutScene: SKScene {
             passLane.lineCap = .round
             
             for athlete in context.athletes.values {
-                let node = PlayerNode(athlete: athlete, config: config)
+                let node = ShootoutPlayerNode(athlete: athlete, config: config)
                 playerNodes[athlete.id] = node
                 world.addChild(node)
             }

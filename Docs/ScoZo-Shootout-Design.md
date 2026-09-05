@@ -105,6 +105,7 @@ MenuScene → ClubPickerScene → ShootoutScene → ShootoutResultScene
 ## Technical Implementation
 
 ### New Files
+- `Scozo Play/Assets/ShootoutAssets.swift` – Asset loader with fallback to procedural shapes
 - `Scozo Play/Shootout/Club.swift` – Club model + Adelaide Premier League roster + UserDefaults persistence
 - `Scozo Play/Shootout/ClubPickerScene.swift` – Club selection grid before play
 - `Scozo Play/Shootout/ShootoutScene.swift` – Main game scene
@@ -112,9 +113,11 @@ MenuScene → ClubPickerScene → ShootoutScene → ShootoutResultScene
 - `Scozo Play/Shootout/ShootoutState.swift` – Score/clock/round state with club info
 - `Scozo Play/Shootout/ShootoutAI.swift` – Defender AI
 - `Scozo Play/Shootout/ShootoutRules.swift` – Round flow logic
-- `Scozo Play/Shootout/ShootoutCourtNode.swift` – Half-court visuals
+- `Scozo Play/Shootout/ShootoutCourtNode.swift` – Half-court visuals (uses court texture when available)
 - `Scozo Play/Shootout/ShootoutHUD.swift` – Goals vs Stops scoreboard with club names
 - `Scozo Play/Shootout/ShootoutPassSystem.swift` – GS↔GA pass system
+- `Scozo Play/Shootout/ShootoutPlayerNode.swift` – Player sprite with texture/shape fallback
+- `Scozo Play/Shootout/ShootoutBallNode.swift` – Ball sprite with texture/shape fallback
 - `Scozo Play/Shootout/ShootoutResultScene.swift` – End-of-round screen with club names
 
 ### Reused Components
@@ -142,6 +145,32 @@ Reference: 2D isometric look
 - Dashed trajectory preview when shooting
 - Timing/power arc around shooter
 - Selection ring on active player
+
+## Assets (2D Art Pack)
+
+**Expected assets in `Assets.xcassets`:**
+
+| Asset Name | Description |
+|------------|-------------|
+| `court` | Half-court floor with shooting circle |
+| `ball` | Netball sprite |
+| `selection-ring` | Glowing ring under selected player |
+| `gs-idle` | Goal Shooter standing |
+| `gs-shuffle` | Goal Shooter moving |
+| `gs-pass` | Goal Shooter passing |
+| `gs-shoot` | Goal Shooter shooting |
+| `ga-idle` | Goal Attack standing |
+| `ga-shuffle` | Goal Attack moving |
+| `ga-pass` | Goal Attack passing |
+| `ga-shoot` | Goal Attack shooting |
+| `gd-idle` | Goal Defence standing |
+| `gd-shuffle` | Goal Defence moving |
+| `gd-defend` | Goal Defence defending |
+| `gk-idle` | Goal Keeper standing |
+| `gk-shuffle` | Goal Keeper moving |
+| `gk-defend` | Goal Keeper defending |
+
+**Note:** The game uses procedural shape-based placeholders until these PNG assets are added. The `ShootoutAssets` loader automatically detects and uses textures when available.
 
 ## Definition of Done
 
