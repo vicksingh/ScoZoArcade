@@ -56,7 +56,7 @@ final class MenuScene: SKScene {
         addChild(title)
 
         let sub = SKLabelNode(fontNamed: "AvenirNext-Medium")
-        sub.text = "5v5 NETBALL · QUICK MATCH"
+        sub.text = "SHOOTOUT · 2v2 IN THE CIRCLE"
         sub.fontSize = 13
         sub.fontColor = config.palette.teal
         sub.position = CGPoint(x: w * 0.5, y: h * 0.355)
@@ -79,7 +79,7 @@ final class MenuScene: SKScene {
         button.addChild(play)
 
         let help = SKLabelNode(fontNamed: "AvenirNext-Medium")
-        help.text = "Portrait arcade  ·  four short quarters"
+        help.text = "First to 5 goals  ·  90 seconds  ·  3 stops to lose"
         help.fontSize = 11
         help.fontColor = SKColor(white: 1, alpha: 0.45)
         help.position = CGPoint(x: w * 0.5, y: h * 0.14)
@@ -100,8 +100,8 @@ final class MenuScene: SKScene {
     }
 
     private func startMatch() {
-        let match = MatchScene(size: size, config: config)
-        match.scaleMode = .resizeFill
-        view?.presentScene(match, transition: .fade(withDuration: 0.35))
+        let shootout = ShootoutScene(size: size, config: config)
+        shootout.scaleMode = .resizeFill
+        view?.presentScene(shootout, transition: .fade(withDuration: 0.35))
     }
 }
