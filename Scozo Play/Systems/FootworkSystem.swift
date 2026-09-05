@@ -64,8 +64,19 @@ struct FootworkSystem {
     }
 
     private func updateHeldBall(context: MatchContext, dt: TimeInterval) {
-        guard context.state.phase == .inPlay || context.state.phase == .overtime else { return }
-        guard context.state.ballOwner != nil, !context.ball.isInFlight else { return }
+        guard context.state.phase == .inPlay || context.state.phase == .overtime else {
+            return
+        }
+
+        guard let carrier = context.carrier() else {
+            return
+        }
+
+        guard carrier.hasBall,
+              !context.ball.isInFlight,
+              context.ball.flight != .loose else {
+            return
+        }
 
         context.state.heldBallElapsed += dt
         if context.state.heldBallElapsed + 0.0001 >= context.config.heldBallLimit {
@@ -75,21 +86,30 @@ struct FootworkSystem {
 
     func forceTurnover(context: MatchContext) {
         guard let ownerID = context.state.ballOwner, let owner = context.athletes[ownerID] else { return }
+
         owner.hasBall = false
         let drop = owner.courtPosition
+
         if let opponent = context.nearest(to: drop, side: ownerID.side.opposing) {
-            opponent.hasBall = true
+            for athlete in context.athletes.values {
+                athlete.hasBall = athlete.id == opponent.id
+            }
             context.ball.attach(to: opponent.id, at: opponent.courtPosition)
             context.state.setPossession(owner: opponent.id)
         } else {
+            for athlete in context.athletes.values {
+                athlete.hasBall = false
+            }
             context.ball.drop(at: drop)
             context.state.clearPossession()
         }
+
         if ownerID.side == .home {
             context.state.stats.homeTurnovers += 1
         } else {
             context.state.stats.awayTurnovers += 1
         }
+
         context.emit(.turnover(ownerID.side))
         context.state.cueMessage = "HELD BALL"
     }

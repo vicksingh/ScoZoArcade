@@ -38,15 +38,16 @@ final class MatchContext {
                     athletes[id] = Athlete(id: id, courtPosition: point, facing: facing)
                 }
             }
+            applyCentrePassPossession()
         } else {
             for athlete in athletes.values {
                 athlete.courtPosition = athlete.id.role.defaultFormation(in: geometry, team: athlete.id.side)
                 athlete.velocity = .zero
                 athlete.targetPoint = nil
                 athlete.facing = athlete.id.side == .home ? .pi / 2 : -.pi / 2
+                athlete.hasBall = false
             }
         }
-        applyCentrePassPossession()
     }
 
     func applyCentrePassPossession() {
@@ -74,6 +75,17 @@ final class MatchContext {
     }
 
     func carrier() -> Athlete? {
+        guard let owner = state.ballOwner,
+              let athlete = athletes[owner],
+              athlete.hasBall,
+              !ball.isInFlight,
+              ball.flight != .loose else {
+            return nil
+        }
+        return athlete
+    }
+
+    func claimedOwner() -> Athlete? {
         guard let owner = state.ballOwner else { return nil }
         return athletes[owner]
     }

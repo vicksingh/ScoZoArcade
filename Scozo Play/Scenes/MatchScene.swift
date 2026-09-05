@@ -126,7 +126,10 @@ final class MatchScene: SKScene {
         syncVisuals()
         refreshShotPreview()
         var held: TimeInterval?
-        if let carrier = context.carrier(), carrier.hasBall {
+        if let carrier = context.carrier(),
+           carrier.hasBall,
+           !context.ball.isInFlight,
+           context.ball.flight != .loose {
             held = max(0, config.heldBallLimit - context.state.heldBallElapsed)
         }
         hud.refresh(context.state, heldRemaining: held)
@@ -190,15 +193,20 @@ final class MatchScene: SKScene {
             let display = court.displayPoint(fromCourt: athlete.courtPosition)
             let scale = context.geometry.depthScale(forCourtY: athlete.courtPosition.y, config: config)
             var remaining: TimeInterval?
-            if athlete.hasBall {
+            if athlete.hasBall,
+               context.state.ballOwner == athlete.id,
+               !context.ball.isInFlight,
+               context.ball.flight != .loose {
                 remaining = max(0, config.heldBallLimit - context.state.heldBallElapsed)
             }
             node.sync(from: athlete, display: display, scale: scale, heldRemaining: remaining)
         }
-        if let owner = context.carrier() {
+        if let carrier = context.carrier(),
+           !context.ball.isInFlight,
+           context.ball.flight != .loose {
             let offset = CGPoint(
-                x: owner.courtPosition.x + owner.facingVector.dx * 10,
-                y: owner.courtPosition.y + owner.facingVector.dy * 8 + 8
+                x: carrier.courtPosition.x + carrier.facingVector.dx * 10,
+                y: carrier.courtPosition.y + carrier.facingVector.dy * 8 + 8
             )
             context.ball.courtPosition = offset
         }
