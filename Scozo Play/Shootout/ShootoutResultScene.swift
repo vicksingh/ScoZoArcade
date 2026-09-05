@@ -3,10 +3,14 @@ import SpriteKit
 final class ShootoutResultScene: SKScene {
     private let config: GameConfig
     private let state: ShootoutState
+    private let homeClub: Club
+    private let awayClub: Club
     
-    init(size: CGSize, config: GameConfig, state: ShootoutState) {
+    init(size: CGSize, config: GameConfig, state: ShootoutState, homeClub: Club, awayClub: Club) {
         self.config = config
         self.state = state
+        self.homeClub = homeClub
+        self.awayClub = awayClub
         super.init(size: size)
         scaleMode = .resizeFill
     }
@@ -51,14 +55,21 @@ final class ShootoutResultScene: SKScene {
         }
         
         let title = SKLabelNode(fontNamed: "AvenirNextCondensed-Heavy")
-        title.text = winner == .home ? "YOU WIN!" : (winner == .away ? "DEFENCE WINS" : "TIME UP")
-        title.fontSize = 38
+        title.text = winner == .home ? "\(homeClub.displayName.uppercased()) WIN!" : (winner == .away ? "\(awayClub.displayName.uppercased()) WIN!" : "TIME UP")
+        title.fontSize = 32
         title.fontColor = accent
         title.position = CGPoint(x: w * 0.5, y: h * 0.72)
         addChild(title)
         
+        let matchup = SKLabelNode(fontNamed: "AvenirNext-Medium")
+        matchup.text = "\(homeClub.displayName) vs \(awayClub.displayName)"
+        matchup.fontSize = 14
+        matchup.fontColor = SKColor(white: 1, alpha: 0.7)
+        matchup.position = CGPoint(x: w * 0.5, y: h * 0.67)
+        addChild(matchup)
+        
         let scoreRow = SKNode()
-        scoreRow.position = CGPoint(x: w * 0.5, y: h * 0.58)
+        scoreRow.position = CGPoint(x: w * 0.5, y: h * 0.54)
         
         let goalsBox = SKShapeNode(rectOf: CGSize(width: 70, height: 70), cornerRadius: 14)
         goalsBox.fillColor = config.palette.teal.withAlphaComponent(0.9)
@@ -129,14 +140,14 @@ final class ShootoutResultScene: SKScene {
         }
         summary.fontSize = 14
         summary.fontColor = SKColor(white: 1, alpha: 0.6)
-        summary.position = CGPoint(x: w * 0.5, y: h * 0.44)
+        summary.position = CGPoint(x: w * 0.5, y: h * 0.40)
         addChild(summary)
         
         let statsLine = SKLabelNode(fontNamed: "AvenirNext-Medium")
         statsLine.text = "Shots: \(state.stats.homeShots)  ·  Passes: \(state.stats.homePasses)  ·  Intercepts: \(state.stats.intercepts)"
         statsLine.fontSize = 11
         statsLine.fontColor = SKColor(white: 1, alpha: 0.45)
-        statsLine.position = CGPoint(x: w * 0.5, y: h * 0.38)
+        statsLine.position = CGPoint(x: w * 0.5, y: h * 0.35)
         addChild(statsLine)
         
         addButton(title: "REMATCH", name: "rematch", at: CGPoint(x: w * 0.5, y: h * 0.26), fill: accent)
@@ -163,7 +174,8 @@ final class ShootoutResultScene: SKScene {
         guard let point = touches.first?.location(in: self) else { return }
         let names = Set(nodes(at: point).compactMap(\.name))
         if names.contains("rematch") {
-            let shootout = ShootoutScene(size: size, config: config)
+            let newAwayClub = Club.random(excluding: homeClub)
+            let shootout = ShootoutScene(size: size, config: config, homeClub: homeClub, awayClub: newAwayClub)
             shootout.scaleMode = .resizeFill
             view?.presentScene(shootout, transition: .fade(withDuration: 0.28))
         } else if names.contains("menu") {

@@ -21,9 +21,9 @@ final class ShootoutContext {
         (.away, .gd)
     ]
     
-    init(config: GameConfig) {
+    init(config: GameConfig, homeClub: Club, awayClub: Club) {
         self.config = config
-        self.state = .fresh()
+        self.state = .fresh(homeClub: homeClub, awayClub: awayClub)
         self.geometry = .make(config: config)
         self.athletes = [:]
         self.ball = BallRuntime(courtPosition: .zero)

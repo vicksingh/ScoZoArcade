@@ -4,6 +4,8 @@ import SpriteKit
 final class ShootoutHUD: SKNode {
     private let config: GameConfig
     private let scoreCard = SKNode()
+    private let homeNameLabel = SKLabelNode(fontNamed: "AvenirNextCondensed-Bold")
+    private let awayNameLabel = SKLabelNode(fontNamed: "AvenirNextCondensed-Bold")
     private let goalsLabel = SKLabelNode(fontNamed: "AvenirNextCondensed-Heavy")
     private let stopsLabel = SKLabelNode(fontNamed: "AvenirNextCondensed-Heavy")
     private let clockLabel = SKLabelNode(fontNamed: "Menlo-Bold")
@@ -38,6 +40,8 @@ final class ShootoutHUD: SKNode {
     }
     
     func refresh(_ state: ShootoutState, heldRemaining: TimeInterval?) {
+        homeNameLabel.text = state.homeClub.displayName.uppercased()
+        awayNameLabel.text = state.awayClub.displayName.uppercased()
         goalsLabel.text = "\(state.homeScore)"
         stopsLabel.text = "\(state.awayStops)"
         clockLabel.text = state.formattedClock()
@@ -74,6 +78,12 @@ final class ShootoutHUD: SKNode {
     }
     
     private func assemble() {
+        homeNameLabel.fontSize = 11
+        homeNameLabel.fontColor = config.palette.teal
+        homeNameLabel.position = CGPoint(x: -52, y: 28)
+        homeNameLabel.verticalAlignmentMode = .center
+        scoreCard.addChild(homeNameLabel)
+        
         let goalsPill = SKShapeNode(rectOf: CGSize(width: 80, height: 36), cornerRadius: 10)
         goalsPill.fillColor = config.palette.teal.withAlphaComponent(0.92)
         goalsPill.strokeColor = SKColor(white: 1, alpha: 0.12)
@@ -94,6 +104,12 @@ final class ShootoutHUD: SKNode {
         goalsLabel.position = CGPoint(x: -52, y: -6)
         goalsLabel.verticalAlignmentMode = .center
         scoreCard.addChild(goalsLabel)
+        
+        awayNameLabel.fontSize = 11
+        awayNameLabel.fontColor = config.palette.magenta
+        awayNameLabel.position = CGPoint(x: 52, y: 28)
+        awayNameLabel.verticalAlignmentMode = .center
+        scoreCard.addChild(awayNameLabel)
         
         let stopsPill = SKShapeNode(rectOf: CGSize(width: 80, height: 36), cornerRadius: 10)
         stopsPill.fillColor = config.palette.magenta.withAlphaComponent(0.92)

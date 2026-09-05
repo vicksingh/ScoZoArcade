@@ -27,10 +27,14 @@ final class ShootoutScene: SKScene {
     private let trajectory = SKNode()
     private let meterArc = SKShapeNode()
     private let passLane = SKShapeNode()
+    private let homeClub: Club
+    private let awayClub: Club
     
-    init(size: CGSize, config: GameConfig) {
+    init(size: CGSize, config: GameConfig, homeClub: Club, awayClub: Club) {
         self.config = config
-        self.context = ShootoutContext(config: config)
+        self.homeClub = homeClub
+        self.awayClub = awayClub
+        self.context = ShootoutContext(config: config, homeClub: homeClub, awayClub: awayClub)
         self.court = ShootoutCourtNode(geometry: context.geometry, config: config)
         self.hoop = HoopNode(side: .home, config: config)
         self.ballNode = BallNode(config: config)
@@ -572,11 +576,13 @@ final class ShootoutScene: SKScene {
         guard context.state.phase == .roundOver, !presentingResult else { return }
         presentingResult = true
         let snapshot = context.state
+        let home = homeClub
+        let away = awayClub
         run(.sequence([
             .wait(forDuration: 1.2),
             .run { [weak self] in
                 guard let self else { return }
-                let result = ShootoutResultScene(size: self.size, config: self.config, state: snapshot)
+                let result = ShootoutResultScene(size: self.size, config: self.config, state: snapshot, homeClub: home, awayClub: away)
                 self.view?.presentScene(result, transition: .fade(withDuration: 0.4))
             }
         ]))

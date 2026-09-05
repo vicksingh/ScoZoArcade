@@ -20,6 +20,8 @@ struct ShootoutStats: Equatable {
 }
 
 struct ShootoutState: Equatable {
+    var homeClub: Club
+    var awayClub: Club
     var homeScore: Int
     var awayStops: Int
     var clockRemaining: TimeInterval
@@ -40,8 +42,10 @@ struct ShootoutState: Equatable {
     static let stopsToWin = 3
     static let roundDuration: TimeInterval = 90
     
-    static func fresh() -> ShootoutState {
+    static func fresh(homeClub: Club, awayClub: Club) -> ShootoutState {
         ShootoutState(
+            homeClub: homeClub,
+            awayClub: awayClub,
             homeScore: 0,
             awayStops: 0,
             clockRemaining: roundDuration,

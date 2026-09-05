@@ -77,23 +77,45 @@ Shows:
 - Cuts passing lanes
 - Both defenders contest loose balls
 
+## Teams (Adelaide Premier League)
+
+| Club | Short |
+|------|-------|
+| Contax | CTX |
+| Garville | GAR |
+| Matrics | MAT |
+| Norwood | NOR |
+| Oakdale | OAK |
+| South Adelaide | SOU |
+| Tango | TAN |
+| Walkerville | WAL |
+
+**Club Selection:**
+- Player picks their club from a grid picker (persisted via UserDefaults)
+- AI randomly selects from remaining 7 clubs
+- Club names shown in HUD (not baked onto player sprites — kits stay teal/magenta)
+
 ## Screen Flow
 
 ```
-MenuScene → ShootoutScene → ShootoutResultScene
-                ↑_____REMATCH_______|
+MenuScene → ClubPickerScene → ShootoutScene → ShootoutResultScene
+                                    ↑_____REMATCH_______|
 ```
 
 ## Technical Implementation
 
 ### New Files
+- `Scozo Play/Shootout/Club.swift` – Club model + Adelaide Premier League roster + UserDefaults persistence
+- `Scozo Play/Shootout/ClubPickerScene.swift` – Club selection grid before play
 - `Scozo Play/Shootout/ShootoutScene.swift` – Main game scene
 - `Scozo Play/Shootout/ShootoutContext.swift` – Game state container
-- `Scozo Play/Shootout/ShootoutState.swift` – Score/clock/round state
+- `Scozo Play/Shootout/ShootoutState.swift` – Score/clock/round state with club info
 - `Scozo Play/Shootout/ShootoutAI.swift` – Defender AI
 - `Scozo Play/Shootout/ShootoutRules.swift` – Round flow logic
 - `Scozo Play/Shootout/ShootoutCourtNode.swift` – Half-court visuals
-- `Scozo Play/Shootout/ShootoutResultScene.swift` – End-of-round screen
+- `Scozo Play/Shootout/ShootoutHUD.swift` – Goals vs Stops scoreboard with club names
+- `Scozo Play/Shootout/ShootoutPassSystem.swift` – GS↔GA pass system
+- `Scozo Play/Shootout/ShootoutResultScene.swift` – End-of-round screen with club names
 
 ### Reused Components
 - `VirtualControlsNode` – D-pad + Shoot/Pass/Switch buttons

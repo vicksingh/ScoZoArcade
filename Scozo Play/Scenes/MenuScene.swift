@@ -100,8 +100,8 @@ final class MenuScene: SKScene {
     }
 
     private func startMatch() {
-        let shootout = ShootoutScene(size: size, config: config)
-        shootout.scaleMode = .resizeFill
-        view?.presentScene(shootout, transition: .fade(withDuration: 0.35))
+        let picker = ClubPickerScene(size: size, config: config)
+        picker.scaleMode = .resizeFill
+        view?.presentScene(picker, transition: .fade(withDuration: 0.35))
     }
 }
