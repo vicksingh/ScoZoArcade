@@ -31,6 +31,7 @@ final class MatchScene: SKScene {
     private var wasLoose = false
     private let trajectory = SKNode()
     private let meterArc = SKShapeNode()
+    private let passLane = SKShapeNode()
 
     init(size: CGSize, config: GameConfig) {
         self.config = config
@@ -59,11 +60,17 @@ final class MatchScene: SKScene {
             world.addChild(fx)
             fx.addChild(trajectory)
             fx.addChild(meterArc)
+            fx.addChild(passLane)
             meterArc.strokeColor = config.palette.teal
             meterArc.fillColor = .clear
             meterArc.lineWidth = 3
             meterArc.zPosition = ZLayer.effects
             trajectory.zPosition = ZLayer.effects
+            passLane.strokeColor = config.palette.success
+            passLane.fillColor = .clear
+            passLane.lineWidth = 2.5
+            passLane.zPosition = ZLayer.effects - 1
+            passLane.alpha = 0.7
             for athlete in context.athletes.values {
                 let node = PlayerNode(athlete: athlete, config: config)
                 playerNodes[athlete.id] = node
@@ -195,6 +202,7 @@ final class MatchScene: SKScene {
     }
 
     private func syncVisuals() {
+        let currentPassTarget = context.passTarget
         for (id, node) in playerNodes {
             guard let athlete = context.athletes[id] else { continue }
             let display = court.displayPoint(fromCourt: athlete.courtPosition)
@@ -206,8 +214,16 @@ final class MatchScene: SKScene {
                context.ball.flight != .loose {
                 remaining = max(0, config.heldBallLimit - context.state.heldBallElapsed)
             }
-            node.sync(from: athlete, display: display, scale: scale, heldRemaining: remaining)
+            let isTarget = currentPassTarget == athlete.id && context.isValidPassTarget(athlete.id)
+            node.sync(from: athlete, display: display, scale: scale, heldRemaining: remaining, isPassTarget: isTarget)
         }
+
+        if context.carrier() == nil {
+            context.clearPassTarget()
+        }
+
+        drawPassLane()
+
         if let carrier = context.carrier(),
            !context.ball.isInFlight,
            context.ball.flight != .loose {
@@ -225,6 +241,29 @@ final class MatchScene: SKScene {
             airborne: airborne
         )
         handleCues()
+    }
+
+    private func drawPassLane() {
+        passLane.path = nil
+
+        guard let carrier = context.carrier(),
+              let targetID = context.passTarget,
+              let target = context.athletes[targetID],
+              context.isValidPassTarget(targetID) else {
+            return
+        }
+
+        let startDisplay = court.displayPoint(fromCourt: carrier.courtPosition)
+        let endDisplay = court.displayPoint(fromCourt: target.courtPosition)
+
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: startDisplay.x, y: startDisplay.y + 10))
+        path.addLine(to: CGPoint(x: endDisplay.x, y: endDisplay.y + 10))
+        passLane.path = path
+
+        if let dashed = passLane.path?.copy(dashingWithPhase: 0, lengths: [8, 6]) {
+            passLane.path = dashed
+        }
     }
 
     private func handleCues() {
@@ -322,7 +361,33 @@ final class MatchScene: SKScene {
             return
         }
         if controls.containsControl(point) { return }
+
+        if let tappedTarget = findTappedPassTarget(at: point) {
+            if context.passTarget == tappedTarget {
+                context.input.requestPass()
+            } else {
+                context.setPassTarget(tappedTarget)
+            }
+            return
+        }
+
+        context.clearPassTarget()
         context.input.aimPoint = court.courtPoint(fromDisplay: point)
+    }
+
+    private func findTappedPassTarget(at displayPoint: CGPoint) -> PlayerID? {
+        guard context.carrier()?.id.side == .home else { return nil }
+
+        let tapRadius: CGFloat = 36
+
+        for target in context.validPassTargets() {
+            guard let node = playerNodes[target.id] else { continue }
+            let dist = hypot(displayPoint.x - node.position.x, displayPoint.y - node.position.y)
+            if dist < tapRadius {
+                return target.id
+            }
+        }
+        return nil
     }
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {

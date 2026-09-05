@@ -9,6 +9,7 @@ final class PlayerNode: SKNode {
     private let selection: SKShapeNode
     private let possession: SKShapeNode
     private let heldWarning: SKShapeNode
+    private let passTargetRing: SKShapeNode
     private let facingMark: SKShapeNode
     private let label: SKLabelNode
 
@@ -19,6 +20,7 @@ final class PlayerNode: SKNode {
         self.selection = SKShapeNode(ellipseOf: CGSize(width: 38, height: 14))
         self.possession = SKShapeNode(ellipseOf: CGSize(width: 32, height: 12))
         self.heldWarning = SKShapeNode(ellipseOf: CGSize(width: 42, height: 16))
+        self.passTargetRing = SKShapeNode(ellipseOf: CGSize(width: 44, height: 17))
         self.facingMark = SKShapeNode()
         self.label = SKLabelNode(fontNamed: "AvenirNextCondensed-Heavy")
         super.init()
@@ -59,6 +61,14 @@ final class PlayerNode: SKNode {
         heldWarning.position = CGPoint(x: 0, y: -20)
         heldWarning.isHidden = true
         addChild(heldWarning)
+
+        passTargetRing.strokeColor = config.palette.success
+        passTargetRing.fillColor = config.palette.success.withAlphaComponent(0.18)
+        passTargetRing.lineWidth = 2.5
+        passTargetRing.glowWidth = 5
+        passTargetRing.position = CGPoint(x: 0, y: -20)
+        passTargetRing.isHidden = true
+        addChild(passTargetRing)
 
         let chevron = CGMutablePath()
         chevron.move(to: CGPoint(x: 0, y: 7))
@@ -143,13 +153,14 @@ final class PlayerNode: SKNode {
         bodyRoot.addChild(label)
     }
 
-    func sync(from athlete: Athlete, display: CGPoint, scale: CGFloat, heldRemaining: TimeInterval?) {
+    func sync(from athlete: Athlete, display: CGPoint, scale: CGFloat, heldRemaining: TimeInterval?, isPassTarget: Bool = false) {
         position = display
         setScale(scale)
         zPosition = ZLayer.players + (1.2 - scale) * 14
         setSelected(athlete.isSelected)
         setHasBall(athlete.hasBall)
         setFacing(athlete.facing)
+        setPassTarget(isPassTarget)
         if let heldRemaining, athlete.hasBall, heldRemaining <= 1.05 {
             heldWarning.isHidden = false
             heldWarning.alpha = 0.55 + 0.45 * CGFloat(1 - heldRemaining)
@@ -171,6 +182,19 @@ final class PlayerNode: SKNode {
     func setSelected(_ value: Bool) {
         athlete.isSelected = value
         selection.isHidden = !value
+    }
+
+    func setPassTarget(_ value: Bool) {
+        passTargetRing.isHidden = !value
+        if value {
+            passTargetRing.run(.repeatForever(.sequence([
+                .scale(to: 1.08, duration: 0.4),
+                .scale(to: 1.0, duration: 0.4)
+            ])), withKey: "passTargetPulse")
+        } else {
+            passTargetRing.removeAction(forKey: "passTargetPulse")
+            passTargetRing.setScale(1.0)
+        }
     }
 
     func setFacing(_ radians: CGFloat) {

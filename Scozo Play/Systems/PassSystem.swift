@@ -22,8 +22,18 @@ struct PassSystem {
             return
         }
 
-        let target = chooseReceiver(from: passer, context: context)
-        guard let receiver = target else {
+        let receiver: Athlete?
+        if let explicitTarget = context.passTarget,
+           let targetAthlete = context.athletes[explicitTarget],
+           context.isValidPassTarget(explicitTarget) {
+            receiver = targetAthlete
+        } else {
+            receiver = chooseReceiver(from: passer, context: context)
+        }
+
+        context.clearPassTarget()
+
+        guard let receiver else {
             context.emit(.hint("NO TARGET"))
             return
         }

@@ -12,6 +12,7 @@ final class MatchContext {
     var events: [MatchEvent]
     var boardRect: CGRect
     var lastHumanAim: CGVector
+    var passTarget: PlayerID?
 
     init(config: GameConfig) {
         self.config = config
@@ -92,6 +93,28 @@ final class MatchContext {
 
     var isBallLoose: Bool {
         ball.flight == .loose && state.ballOwner == nil
+    }
+
+    func setPassTarget(_ target: PlayerID?) {
+        passTarget = target
+    }
+
+    func clearPassTarget() {
+        passTarget = nil
+    }
+
+    func validPassTargets() -> [Athlete] {
+        guard let carrier = carrier(), carrier.id.side == .home else { return [] }
+        return roster(for: .home)
+            .filter { $0.id != carrier.id }
+            .filter { teammate in
+                let dist = carrier.courtPosition.distance(to: teammate.courtPosition)
+                return dist > 8 && dist <= config.passMaxRange
+            }
+    }
+
+    func isValidPassTarget(_ id: PlayerID) -> Bool {
+        validPassTargets().contains { $0.id == id }
     }
 
     func nearestHomeWhoCanReach(point: CGPoint) -> Athlete? {

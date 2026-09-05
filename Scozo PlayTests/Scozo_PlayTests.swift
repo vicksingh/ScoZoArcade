@@ -361,4 +361,64 @@ struct ScoZoArcadeTests {
         #expect(homeC.hasBall, "Player should have ball after pickup")
         #expect(!context.isBallLoose, "Ball should no longer be loose after pickup")
     }
+
+    // MARK: - Pass Targeting Tests
+
+    @Test func validPassTargetsExcludesCarrier() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+        PossessionSystem().enforce(context: context)
+
+        let targets = context.validPassTargets()
+        let carrierID = context.carrier()?.id
+        #expect(carrierID != nil, "Should have a carrier")
+        #expect(!targets.contains { $0.id == carrierID }, "Carrier should not be in pass targets")
+        #expect(targets.count > 0, "Should have valid pass targets")
+    }
+
+    @Test func setPassTargetStoresTarget() {
+        let context = MatchContext(config: .debug)
+        let targetID = PlayerID(side: .home, role: .ga)
+        context.setPassTarget(targetID)
+        #expect(context.passTarget == targetID, "Pass target should be set")
+        context.clearPassTarget()
+        #expect(context.passTarget == nil, "Pass target should be cleared")
+    }
+
+    @Test func isValidPassTargetChecksRange() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+        PossessionSystem().enforce(context: context)
+
+        guard let carrier = context.carrier() else {
+            Issue.record("No carrier")
+            return
+        }
+
+        for target in context.validPassTargets() {
+            let dist = carrier.courtPosition.distance(to: target.courtPosition)
+            #expect(dist <= context.config.passMaxRange, "Valid target should be in range")
+            #expect(dist > 8, "Valid target should not be too close")
+        }
+    }
+
+    @Test func passUsesExplicitTargetWhenSet() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+        PossessionSystem().enforce(context: context)
+
+        let targets = context.validPassTargets()
+        guard let target = targets.first else {
+            Issue.record("No valid targets")
+            return
+        }
+
+        context.setPassTarget(target.id)
+        #expect(context.passTarget == target.id, "Target should be set before pass")
+
+        PassSystem().attemptPass(context: context)
+
+        #expect(context.passTarget == nil, "Pass target should be cleared after pass")
+        #expect(context.ball.isInFlight, "Ball should be in flight after pass")
+    }
 }
