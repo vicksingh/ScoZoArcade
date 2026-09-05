@@ -90,6 +90,22 @@ final class MatchContext {
         return athletes[owner]
     }
 
+    var isBallLoose: Bool {
+        ball.flight == .loose && state.ballOwner == nil
+    }
+
+    func nearestHomeWhoCanReach(point: CGPoint) -> Athlete? {
+        roster(for: .home)
+            .filter { athlete in
+                let zone = athlete.id.role.legalZone(in: geometry, team: .home)
+                return zone.contains(point) || geometry.nearestPoint(in: zone, to: point).distance(to: point) < 60
+            }
+            .min { a, b in
+                a.courtPosition.distance(to: point) < b.courtPosition.distance(to: point)
+            }
+        ?? nearest(to: point, side: .home)
+    }
+
     func nearest(to point: CGPoint, side: TeamSide?, excluding: PlayerID? = nil) -> Athlete? {
         athletes.values
             .filter { athlete in
@@ -120,5 +136,11 @@ final class MatchContext {
         if case .hint(let text) = kind {
             state.cueMessage = text
         }
+    }
+}
+
+extension CGPoint {
+    func distance(to other: CGPoint) -> CGFloat {
+        hypot(x - other.x, y - other.y)
     }
 }

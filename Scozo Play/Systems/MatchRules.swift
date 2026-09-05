@@ -150,6 +150,14 @@ struct MatchRules {
             return
         }
 
+        if context.isBallLoose {
+            if let nearestToBall = context.nearestHomeWhoCanReach(point: ballPoint),
+               current?.id != nearestToBall.id {
+                applySelection(nearestToBall.id, context: context)
+                return
+            }
+        }
+
         if let current {
             let ordered = home
             if let idx = ordered.firstIndex(where: { $0.id == current.id }) {
@@ -202,10 +210,25 @@ struct MatchRules {
         }
 
         let spot = context.ball.courtPosition
-        if let nearest = context.nearest(to: spot, side: .home) {
+        if let nearest = context.nearestHomeWhoCanReach(point: spot) {
             applySelection(nearest.id, context: context)
         } else if let c = context.athletes[PlayerID(side: .home, role: .c)] {
             applySelection(c.id, context: context)
+        }
+    }
+
+    func handleLooseBallAutoSwitch(context: MatchContext) {
+        guard context.isBallLoose else { return }
+        guard let current = context.selectedHome() else { return }
+
+        let ballPoint = context.ball.courtPosition
+        let distanceToBall = current.courtPosition.distance(to: ballPoint)
+
+        if distanceToBall > context.config.looseBallAutoSwitchThreshold {
+            if let nearestToBall = context.nearestHomeWhoCanReach(point: ballPoint),
+               nearestToBall.id != current.id {
+                applySelection(nearestToBall.id, context: context)
+            }
         }
     }
 }

@@ -290,4 +290,75 @@ struct ScoZoArcadeTests {
         MatchRules().applySelection(PlayerID(side: .home, role: .gd), context: context)
         #expect(!PossessionSystem().selectedCanPass(context: context), "Cannot pass when not holding ball")
     }
+
+    // MARK: - Loose Ball Handling Tests
+
+    @Test func isBallLooseDetectsLooseState() {
+        let context = MatchContext(config: .debug)
+        #expect(!context.isBallLoose, "Initially ball is not loose")
+
+        context.ball.drop(at: CGPoint(x: 100, y: 100))
+        context.state.clearPossession()
+        #expect(context.isBallLoose, "Ball should be loose after drop")
+    }
+
+    @Test func switchSelectsNearestToBallWhenLoose() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+
+        let looseBallPos = CGPoint(x: 180, y: 200)
+        context.ball.drop(at: looseBallPos)
+        context.state.clearPossession()
+        PossessionSystem().enforce(context: context)
+
+        MatchRules().applySelection(PlayerID(side: .home, role: .gs), context: context)
+        #expect(context.selectedHome()?.id.role == .gs)
+
+        MatchRules().selectHomePlayer(context: context)
+        let selected = context.selectedHome()
+        #expect(selected != nil)
+        #expect(selected?.id.role != .gs, "Should not stay on GS who is far from loose ball")
+    }
+
+    @Test func autoSwitchTriggersWhenBallBecomesLooseAndFar() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+
+        let gsPos = context.athletes[PlayerID(side: .home, role: .gs)]!.courtPosition
+        let looseBallPos = CGPoint(x: gsPos.x, y: gsPos.y - 300)
+        context.ball.drop(at: looseBallPos)
+        context.state.clearPossession()
+
+        MatchRules().applySelection(PlayerID(side: .home, role: .gs), context: context)
+        let distanceToBall = hypot(gsPos.x - looseBallPos.x, gsPos.y - looseBallPos.y)
+        #expect(distanceToBall > context.config.looseBallAutoSwitchThreshold)
+
+        MatchRules().handleLooseBallAutoSwitch(context: context)
+        let selected = context.selectedHome()
+        #expect(selected?.id.role != .gs, "Auto-switch should move away from far GS")
+    }
+
+    @Test func nearestHomeWhoCanReachConsidersZones() {
+        let context = MatchContext(config: .debug)
+        let midCourtPos = context.geometry.centreMark
+        let nearest = context.nearestHomeWhoCanReach(point: midCourtPos)
+        #expect(nearest != nil, "Should find a home player who can reach mid court")
+        #expect(nearest?.id.role == .c || nearest?.id.role == .ga || nearest?.id.role == .gd,
+                "Mid court should be reachable by C, GA, or GD")
+    }
+
+    @Test func pickupWhenPlayerTouchesLooseBall() {
+        let context = MatchContext(config: .debug)
+        context.state.phase = .inPlay
+
+        let homeC = context.athletes[PlayerID(side: .home, role: .c)]!
+        context.ball.drop(at: homeC.courtPosition)
+        context.state.clearPossession()
+
+        PassSystem().update(context: context, dt: 0.016)
+
+        #expect(context.state.ballOwner == homeC.id, "Player touching loose ball should gain possession")
+        #expect(homeC.hasBall, "Player should have ball after pickup")
+        #expect(!context.isBallLoose, "Ball should no longer be loose after pickup")
+    }
 }

@@ -28,6 +28,7 @@ final class MatchScene: SKScene {
     private var lastTime: TimeInterval = 0
     private var presentingResult = false
     private var lastFlashToken = 0
+    private var wasLoose = false
     private let trajectory = SKNode()
     private let meterArc = SKShapeNode()
 
@@ -117,8 +118,14 @@ final class MatchScene: SKScene {
             ai.update(context: context, dt: dt)
             zones.update(context: context, dt: dt)
             possession.enforce(context: context)
+
+            let isLooseNow = context.isBallLoose
+            if isLooseNow && !wasLoose {
+                rules.handleLooseBallAutoSwitch(context: context)
+            }
+            wasLoose = isLooseNow
         case .paused, .matchOver, .menu, .goalScored, .quarterBreak:
-            break
+            wasLoose = false
         }
         if context.state.phase != .paused {
             rules.update(context: context, dt: dt)

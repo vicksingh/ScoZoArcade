@@ -92,6 +92,7 @@ struct GameConfig {
     var aiMarkDistance: CGFloat
     var aiDecisionInterval: TimeInterval
     var aiPassSafety: CGFloat
+    var looseBallAutoSwitchThreshold: CGFloat
     var rngSeed: UInt64
 
     var mercyEnabled: Bool
@@ -149,6 +150,7 @@ struct GameConfig {
         aiMarkDistance: 34,
         aiDecisionInterval: 0.42,
         aiPassSafety: 0.55,
+        looseBallAutoSwitchThreshold: 100,
         rngSeed: 0,
         mercyEnabled: false,
         mercyLead: 8,
@@ -205,6 +207,7 @@ struct GameConfig {
         aiMarkDistance: 34,
         aiDecisionInterval: 0.28,
         aiPassSafety: 0.5,
+        looseBallAutoSwitchThreshold: 100,
         rngSeed: 42,
         mercyEnabled: false,
         mercyLead: 8,
