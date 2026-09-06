@@ -90,10 +90,15 @@ final class VirtualControlsNode: SKNode {
         }
 
         if inButton(point, node: shootButton) {
-            if !shootLegal { return }
             if !ended {
-                press(shootButton)
-                input?.pressShoot()
+                if shootLegal {
+                    press(shootButton)
+                    input?.pressShoot()
+                } else {
+                    rejectFlash(shootButton)
+                    input?.pressShoot()
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
             } else {
                 release(shootButton)
                 input?.releaseShoot()
@@ -101,8 +106,12 @@ final class VirtualControlsNode: SKNode {
             return
         }
         if ended, inButton(point, node: passButton) {
-            guard passLegal else { return }
-            flash(passButton)
+            if passLegal {
+                flash(passButton)
+            } else {
+                rejectFlash(passButton)
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
             input?.requestPass()
             return
         }
@@ -226,6 +235,13 @@ final class VirtualControlsNode: SKNode {
     private func release(_ node: SKShapeNode) {
         node.setScale(1)
         node.fillColor = SKColor(hex: 0x08141C, alpha: 0.58)
+        if node === shootButton {
+            node.strokeColor = shootLegal ? config.palette.teal.withAlphaComponent(0.9) : SKColor(white: 1, alpha: 0.22)
+        } else if node === passButton {
+            node.strokeColor = passLegal ? config.palette.teal.withAlphaComponent(0.9) : SKColor(white: 1, alpha: 0.22)
+        } else {
+            node.strokeColor = config.palette.teal.withAlphaComponent(0.9)
+        }
     }
 
     private func flash(_ node: SKShapeNode) {
@@ -233,6 +249,24 @@ final class VirtualControlsNode: SKNode {
         node.run(.sequence([
             .wait(forDuration: 0.08),
             .run { [weak self] in self?.release(node) }
+        ]))
+    }
+    
+    private func rejectFlash(_ node: SKShapeNode) {
+        node.removeAllActions()
+        let originalPosition = node.position
+        node.fillColor = config.palette.warning.withAlphaComponent(0.3)
+        node.strokeColor = config.palette.warning
+        node.run(.sequence([
+            .moveBy(x: 4, y: 0, duration: 0.04),
+            .moveBy(x: -8, y: 0, duration: 0.04),
+            .moveBy(x: 8, y: 0, duration: 0.04),
+            .moveBy(x: -4, y: 0, duration: 0.04),
+            .run { [weak self, weak node] in
+                guard let self, let node else { return }
+                node.position = originalPosition
+                self.release(node)
+            }
         ]))
     }
 }

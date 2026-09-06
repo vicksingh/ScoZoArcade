@@ -5,14 +5,25 @@ final class ShootoutCourtNode: SKNode {
     let geometry: CourtGeometry
     private let config: GameConfig
     private(set) var boardRect: CGRect = .zero
+    private let courtTexture: SKTexture?
     private let woodTexture = ProceduralArt.woodTexture()
     private let vignetteTexture = ProceduralArt.vignetteTexture()
+    
+    private var focusMinY: CGFloat = 0
+    private var focusMaxY: CGFloat = 640
     
     init(geometry: CourtGeometry, config: GameConfig) {
         self.geometry = geometry
         self.config = config
+        self.courtTexture = ShootoutAssets.courtTexture()
         super.init()
         zPosition = ZLayer.court
+        
+        let circleCenter = geometry.shootingCircleCenter(for: .home)
+        let radius = geometry.shootingCircleRadius
+        let apron: CGFloat = 55
+        focusMinY = max(0, circleCenter.y - radius - apron)
+        focusMaxY = geometry.size.height
     }
     
     required init?(coder: NSCoder) { nil }
@@ -49,11 +60,17 @@ final class ShootoutCourtNode: SKNode {
     }
     
     func displayPoint(fromCourt point: CGPoint) -> CGPoint {
-        geometry.displayPoint(fromCourt: point, in: boardRect)
+        let focusHeight = focusMaxY - focusMinY
+        let remappedY = (point.y - focusMinY) / max(focusHeight, 1) * geometry.size.height
+        let remapped = CGPoint(x: point.x, y: remappedY)
+        return geometry.displayPoint(fromCourt: remapped, in: boardRect)
     }
     
     func courtPoint(fromDisplay point: CGPoint) -> CGPoint {
-        geometry.courtPoint(fromDisplay: point, in: boardRect)
+        let base = geometry.courtPoint(fromDisplay: point, in: boardRect)
+        let focusHeight = focusMaxY - focusMinY
+        let originalY = base.y / max(geometry.size.height, 1) * focusHeight + focusMinY
+        return CGPoint(x: base.x, y: originalY)
     }
     
     private func project(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
@@ -112,14 +129,6 @@ final class ShootoutCourtNode: SKNode {
         
         placeWordmark(atCourt: CGPoint(x: -12, y: circleCenter.y), rotated: .pi / 2)
         placeWordmark(atCourt: CGPoint(x: geometry.size.width + 12, y: circleCenter.y), rotated: -.pi / 2)
-        
-        let titleLabel = SKLabelNode(fontNamed: "AvenirNextCondensed-Heavy")
-        titleLabel.text = "SHOOTOUT"
-        titleLabel.fontSize = 18
-        titleLabel.fontColor = SKColor(hex: 0x8FD7DC, alpha: 0.45)
-        titleLabel.position = displayPoint(fromCourt: CGPoint(x: geometry.midX, y: geometry.size.height + 8))
-        titleLabel.zPosition = ZLayer.surround + 0.5
-        addChild(titleLabel)
         _ = palette
     }
     
@@ -154,10 +163,16 @@ final class ShootoutCourtNode: SKNode {
         mask.strokeColor = .clear
         crop.maskNode = mask
         
-        let wood = SKSpriteNode(texture: woodTexture, size: CGSize(width: boardRect.width * 1.15, height: boardRect.height * 1.15))
-        wood.position = CGPoint(x: boardRect.midX, y: boardRect.midY)
-        wood.zRotation = -0.015
-        crop.addChild(wood)
+        if let courtTexture {
+            let courtSprite = SKSpriteNode(texture: courtTexture, size: CGSize(width: boardRect.width * 1.1, height: boardRect.height * 1.1))
+            courtSprite.position = CGPoint(x: boardRect.midX, y: boardRect.midY)
+            crop.addChild(courtSprite)
+        } else {
+            let wood = SKSpriteNode(texture: woodTexture, size: CGSize(width: boardRect.width * 1.15, height: boardRect.height * 1.15))
+            wood.position = CGPoint(x: boardRect.midX, y: boardRect.midY)
+            wood.zRotation = -0.015
+            crop.addChild(wood)
+        }
         addChild(crop)
         
         let edge = projectedPolygon([
@@ -167,8 +182,8 @@ final class ShootoutCourtNode: SKNode {
             CGPoint(x: 0, y: geometry.size.height)
         ])
         edge.fillColor = .clear
-        edge.strokeColor = SKColor(hex: 0x6A4A28, alpha: 0.85)
-        edge.lineWidth = 3
+        edge.strokeColor = courtTexture != nil ? SKColor(hex: 0x8FD7DC, alpha: 0.35) : SKColor(hex: 0x6A4A28, alpha: 0.85)
+        edge.lineWidth = courtTexture != nil ? 2 : 3
         edge.zPosition = ZLayer.court + 0.4
         addChild(edge)
     }
