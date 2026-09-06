@@ -23,7 +23,7 @@ final class ShootoutCourtNode: SKNode {
         let radius = geometry.shootingCircleRadius
         let apron: CGFloat = 55
         focusMinY = max(0, circleCenter.y - radius - apron)
-        focusMaxY = geometry.size.height
+        focusMaxY = circleCenter.y + radius + 20
     }
     
     required init?(coder: NSCoder) { nil }
@@ -164,28 +164,10 @@ final class ShootoutCourtNode: SKNode {
         mask.strokeColor = .clear
         crop.maskNode = mask
         
-        if let courtTexture {
-            let textureAspect: CGFloat = 1536.0 / 1024.0
-            let boardAspect = boardRect.width / boardRect.height
-            let spriteWidth: CGFloat
-            let spriteHeight: CGFloat
-            if textureAspect > boardAspect {
-                spriteHeight = boardRect.height * 1.15
-                spriteWidth = spriteHeight * textureAspect
-            } else {
-                spriteWidth = boardRect.width * 1.15
-                spriteHeight = spriteWidth / textureAspect
-            }
-            let courtSprite = SKSpriteNode(texture: courtTexture, size: CGSize(width: spriteWidth, height: spriteHeight))
-            courtSprite.position = CGPoint(x: boardRect.midX, y: boardRect.midY)
-            courtSprite.zRotation = -.pi / 2
-            crop.addChild(courtSprite)
-        } else {
-            let wood = SKSpriteNode(texture: woodTexture, size: CGSize(width: boardRect.width * 1.15, height: boardRect.height * 1.15))
-            wood.position = CGPoint(x: boardRect.midX, y: boardRect.midY)
-            wood.zRotation = -0.015
-            crop.addChild(wood)
-        }
+        let wood = SKSpriteNode(texture: woodTexture, size: CGSize(width: boardRect.width * 1.15, height: boardRect.height * 1.15))
+        wood.position = CGPoint(x: boardRect.midX, y: boardRect.midY)
+        wood.zRotation = -0.015
+        crop.addChild(wood)
         addChild(crop)
         
         let edge = projectedPolygon([
