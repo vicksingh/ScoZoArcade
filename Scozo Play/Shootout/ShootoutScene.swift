@@ -364,8 +364,8 @@ final class ShootoutScene: SKScene {
             context.ball.drop(at: context.ball.end)
             return
         }
-        let hoop = context.geometry.hoopPosition(for: .home)
-        let distance = hypot(hoop.x - context.ball.start.x, hoop.y - context.ball.start.y)
+        let hoopPos = context.geometry.hoopPosition(for: .home)
+        let distance = hypot(hoopPos.x - context.ball.start.x, hoopPos.y - context.ball.start.y)
         let contested = context.roster(for: .away).contains {
             hypot($0.courtPosition.x - context.ball.start.x, $0.courtPosition.y - context.ball.start.y) < 36
         }
@@ -379,13 +379,13 @@ final class ShootoutScene: SKScene {
         context.state.shootMeter = nil
         
         if context.random01() <= chance {
-            context.ball.attach(to: shooterID, at: hoop)
+            context.ball.attach(to: shooterID, at: hoopPos)
             context.emit(.goal(.home))
             hoop.playScoreFlash()
         } else {
             let scatter = CGPoint(
-                x: hoop.x + (context.random01() - 0.5) * 40,
-                y: hoop.y - 28
+                x: hoopPos.x + (context.random01() - 0.5) * 40,
+                y: hoopPos.y - 28
             )
             context.ball.drop(at: context.geometry.clampToCourt(scatter, radius: 8))
             context.emit(.rebound)
