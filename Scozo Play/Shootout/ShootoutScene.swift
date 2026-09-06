@@ -493,10 +493,72 @@ final class ShootoutScene: SKScene {
     }
     
     private func handleCues() {
-        let token = context.state.lastGoalToken
-        guard token != lastFlashToken, context.state.cueMessage == "GOAL!" else { return }
+        let token = context.state.lastCueToken
+        guard token != lastFlashToken else { return }
         lastFlashToken = token
-        hoop.playScoreFlash()
+        
+        guard let cue = context.state.cueMessage else { return }
+        
+        switch cue {
+        case "GOAL!":
+            hoop.playScoreFlash()
+            showCueBanner(text: "GOAL!", color: config.palette.success)
+        case "INTERCEPTED!", "MISS!", "HELD BALL":
+            showTurnoverFlash()
+            showCueBanner(text: cue, color: config.palette.magenta)
+        default:
+            break
+        }
+    }
+    
+    private func showTurnoverFlash() {
+        let flash = SKShapeNode(rectOf: size)
+        flash.fillColor = config.palette.magenta.withAlphaComponent(0.2)
+        flash.strokeColor = .clear
+        flash.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+        flash.zPosition = ZLayer.effects + 10
+        addChild(flash)
+        flash.run(.sequence([
+            .fadeOut(withDuration: 0.4),
+            .removeFromParent()
+        ]))
+    }
+    
+    private func showCueBanner(text: String, color: SKColor) {
+        let banner = SKNode()
+        banner.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+        banner.zPosition = ZLayer.effects + 15
+        banner.alpha = 0
+        banner.setScale(0.6)
+        
+        let bg = SKShapeNode(rectOf: CGSize(width: 180, height: 50), cornerRadius: 10)
+        bg.fillColor = SKColor(hex: 0x061018, alpha: 0.9)
+        bg.strokeColor = color
+        bg.lineWidth = 3
+        bg.glowWidth = 8
+        banner.addChild(bg)
+        
+        let label = SKLabelNode(fontNamed: "AvenirNextCondensed-Heavy")
+        label.text = text
+        label.fontSize = 24
+        label.fontColor = color
+        label.verticalAlignmentMode = .center
+        banner.addChild(label)
+        
+        addChild(banner)
+        banner.run(.sequence([
+            .group([
+                .fadeIn(withDuration: 0.15),
+                .scale(to: 1.1, duration: 0.15)
+            ]),
+            .scale(to: 1.0, duration: 0.1),
+            .wait(forDuration: 0.6),
+            .group([
+                .fadeOut(withDuration: 0.25),
+                .scale(to: 0.8, duration: 0.25)
+            ]),
+            .removeFromParent()
+        ]))
     }
     
     private func refreshShotPreview() {
@@ -513,39 +575,79 @@ final class ShootoutScene: SKScene {
         let hoopPos = court.displayPoint(fromCourt: context.geometry.hoopPosition(for: .home))
         let mid = CGPoint(
             x: (start.x + hoopPos.x) * 0.5,
-            y: max(start.y, hoopPos.y) + 56
+            y: max(start.y, hoopPos.y) + 72
         )
         let path = CGMutablePath()
-        path.move(to: CGPoint(x: start.x, y: start.y + 18))
+        path.move(to: CGPoint(x: start.x, y: start.y + 22))
         path.addQuadCurve(to: hoopPos, control: mid)
+        
+        let outerGlow = SKShapeNode(path: path)
+        outerGlow.strokeColor = config.palette.teal.withAlphaComponent(0.15)
+        outerGlow.lineWidth = 12
+        outerGlow.fillColor = .clear
+        outerGlow.glowWidth = 6
+        trajectory.addChild(outerGlow)
+        
         let glow = SKShapeNode(path: path)
-        glow.strokeColor = config.palette.teal.withAlphaComponent(0.25)
-        glow.lineWidth = 6
+        glow.strokeColor = config.palette.teal.withAlphaComponent(0.35)
+        glow.lineWidth = 5
         glow.fillColor = .clear
         trajectory.addChild(glow)
-        let line = SKShapeNode(path: path)
+        
+        let dashed = path.copy(dashingWithPhase: 0, lengths: [8, 5])
+        let line = SKShapeNode(path: dashed)
         line.strokeColor = config.palette.teal
-        line.lineWidth = 2.4
-        line.lineDash = [7, 6]
+        line.lineWidth = 2.5
         line.fillColor = .clear
         trajectory.addChild(line)
         
-        let end = SKShapeNode(circleOfRadius: 5)
+        let end = SKShapeNode(circleOfRadius: 7)
         end.fillColor = config.palette.teal
         end.strokeColor = .white
-        end.lineWidth = 0.8
+        end.lineWidth = 1.5
+        end.glowWidth = 4
         end.position = hoopPos
         trajectory.addChild(end)
         
         let inSweet = meter.value >= config.shotSweetMin && meter.value <= config.shotSweetMax
+        let meterColor = inSweet ? config.palette.success : (meter.value > config.shotSweetMax ? config.palette.magenta : config.palette.warning)
+        
+        let floorMeter = SKNode()
+        floorMeter.position = CGPoint(x: start.x, y: start.y - 30)
+        
+        let meterBg = SKShapeNode(rectOf: CGSize(width: 60, height: 8), cornerRadius: 4)
+        meterBg.fillColor = SKColor(hex: 0x061018, alpha: 0.8)
+        meterBg.strokeColor = config.palette.teal.withAlphaComponent(0.5)
+        meterBg.lineWidth = 1
+        floorMeter.addChild(meterBg)
+        
+        let fillWidth = 54 * meter.value
+        let fillBar = SKShapeNode(rectOf: CGSize(width: fillWidth, height: 5), cornerRadius: 2.5)
+        fillBar.fillColor = meterColor
+        fillBar.strokeColor = .clear
+        fillBar.position = CGPoint(x: (fillWidth - 54) * 0.5, y: 0)
+        fillBar.glowWidth = 3
+        floorMeter.addChild(fillBar)
+        
+        let sweetMin = config.shotSweetMin * 54 - 27
+        let sweetMax = config.shotSweetMax * 54 - 27
+        let sweetZone = SKShapeNode(rectOf: CGSize(width: sweetMax - sweetMin, height: 6), cornerRadius: 2)
+        sweetZone.fillColor = config.palette.success.withAlphaComponent(0.25)
+        sweetZone.strokeColor = config.palette.success.withAlphaComponent(0.6)
+        sweetZone.lineWidth = 1
+        sweetZone.position = CGPoint(x: (sweetMin + sweetMax) * 0.5, y: 0)
+        floorMeter.addChild(sweetZone)
+        
+        trajectory.addChild(floorMeter)
+        
         meterArc.position = start
-        meterArc.strokeColor = inSweet ? config.palette.success : (meter.value > config.shotSweetMax ? config.palette.magenta : config.palette.warning)
-        meterArc.glowWidth = 5
-        meterArc.lineWidth = 4.5
-        meterArc.yScale = 0.45
+        meterArc.strokeColor = meterColor
+        meterArc.glowWidth = 6
+        meterArc.lineWidth = 5
+        meterArc.yScale = 0.42
         meterArc.xScale = 1
         let arc = CGMutablePath()
-        let radius: CGFloat = 32
+        let radius: CGFloat = 36
         arc.addArc(
             center: .zero,
             radius: radius,

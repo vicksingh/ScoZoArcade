@@ -148,15 +148,23 @@ final class VirtualControlsNode: SKNode {
     }
 
     private func assemble() {
-        padBase.fillColor = SKColor(hex: 0x0A1218, alpha: 0.48)
-        padBase.strokeColor = SKColor(white: 1, alpha: 0.22)
-        padBase.lineWidth = 2
+        let outerGlow = SKShapeNode(circleOfRadius: 62)
+        outerGlow.fillColor = .clear
+        outerGlow.strokeColor = config.palette.teal.withAlphaComponent(0.18)
+        outerGlow.lineWidth = 3
+        outerGlow.glowWidth = 8
+        pad.addChild(outerGlow)
+        
+        padBase.fillColor = SKColor(hex: 0x061018, alpha: 0.72)
+        padBase.strokeColor = config.palette.teal.withAlphaComponent(0.65)
+        padBase.lineWidth = 2.5
+        padBase.glowWidth = 4
         pad.addChild(padBase)
 
         let ring = SKShapeNode(circleOfRadius: 22)
         ring.fillColor = .clear
-        ring.strokeColor = SKColor(white: 1, alpha: 0.16)
-        ring.lineWidth = 1.2
+        ring.strokeColor = config.palette.teal.withAlphaComponent(0.25)
+        ring.lineWidth = 1.5
         pad.addChild(ring)
 
         for (vector, rotation) in [
@@ -167,23 +175,24 @@ final class VirtualControlsNode: SKNode {
         ] {
             let arrow = SKLabelNode(fontNamed: "AvenirNext-Bold")
             arrow.text = "▲"
-            arrow.fontSize = 12
-            arrow.fontColor = SKColor(white: 1, alpha: 0.8)
+            arrow.fontSize = 13
+            arrow.fontColor = config.palette.teal
             arrow.position = vector
             arrow.zRotation = rotation
             arrow.verticalAlignmentMode = .center
             pad.addChild(arrow)
         }
 
-        padKnob.fillColor = SKColor(white: 1, alpha: 0.18)
-        padKnob.strokeColor = SKColor(white: 1, alpha: 0.55)
-        padKnob.lineWidth = 1
+        padKnob.fillColor = config.palette.teal.withAlphaComponent(0.22)
+        padKnob.strokeColor = config.palette.teal
+        padKnob.lineWidth = 2
+        padKnob.glowWidth = 3
         pad.addChild(padKnob)
         addChild(pad)
 
-        styleButton(shootButton, title: "SHOOT", kind: .shoot)
-        styleButton(passButton, title: "PASS", kind: .pass)
-        styleButton(switchButton, title: "SWITCH", kind: .swap)
+        styleButton(shootButton, title: "SHOOT", kind: .shoot, primary: true)
+        styleButton(passButton, title: "PASS", kind: .pass, primary: false)
+        styleButton(switchButton, title: "SWITCH", kind: .swap, primary: false)
         addChild(shootButton)
         addChild(passButton)
         addChild(switchButton)
@@ -191,36 +200,62 @@ final class VirtualControlsNode: SKNode {
 
     private enum Glyph { case shoot, pass, swap }
 
-    private func styleButton(_ node: SKShapeNode, title: String, kind: Glyph) {
-        node.fillColor = SKColor(hex: 0x08141C, alpha: 0.58)
-        node.strokeColor = config.palette.teal.withAlphaComponent(0.9)
-        node.lineWidth = 1.8
-        node.glowWidth = 4
-        node.addChild(glyph(kind))
+    private func styleButton(_ node: SKShapeNode, title: String, kind: Glyph, primary: Bool) {
+        node.fillColor = primary 
+            ? config.palette.teal.withAlphaComponent(0.15) 
+            : SKColor(hex: 0x061018, alpha: 0.72)
+        node.strokeColor = config.palette.teal
+        node.lineWidth = primary ? 2.5 : 2
+        node.glowWidth = primary ? 8 : 4
+        node.addChild(glyph(kind, primary: primary))
         let label = SKLabelNode(fontNamed: "AvenirNextCondensed-Bold")
         label.text = title
-        label.fontSize = 11
-        label.fontColor = .white
+        label.fontSize = primary ? 12 : 10
+        label.fontColor = primary ? config.palette.teal : .white
         label.verticalAlignmentMode = .center
-        label.position = CGPoint(x: 0, y: -18)
+        label.position = CGPoint(x: 0, y: primary ? -20 : -18)
         node.addChild(label)
     }
 
-    private func glyph(_ kind: Glyph) -> SKNode {
+    private func glyph(_ kind: Glyph, primary: Bool = false) -> SKNode {
         let root = SKNode()
-        root.position = CGPoint(x: 0, y: 6)
+        root.position = CGPoint(x: 0, y: primary ? 4 : 6)
         switch kind {
-        case .shoot, .pass:
+        case .shoot:
+            let ball = SKShapeNode(circleOfRadius: primary ? 12 : 8)
+            ball.fillColor = SKColor(hex: 0xF4F1EA)
+            ball.strokeColor = config.palette.teal
+            ball.lineWidth = primary ? 2 : 1.2
+            ball.glowWidth = primary ? 3 : 0
+            root.addChild(ball)
+            if primary {
+                let arc = SKShapeNode()
+                let path = CGMutablePath()
+                path.addArc(center: CGPoint(x: 0, y: 18), radius: 12, startAngle: .pi * 0.7, endAngle: .pi * 0.3, clockwise: true)
+                arc.path = path
+                arc.strokeColor = config.palette.teal.withAlphaComponent(0.6)
+                arc.lineWidth = 2
+                arc.lineCap = .round
+                root.addChild(arc)
+            }
+        case .pass:
             let ball = SKShapeNode(circleOfRadius: 8)
             ball.fillColor = SKColor(hex: 0xF4F1EA)
             ball.strokeColor = config.palette.teal
             ball.lineWidth = 1.2
             root.addChild(ball)
+            let arrow = SKLabelNode(fontNamed: "AvenirNext-Bold")
+            arrow.text = "→"
+            arrow.fontSize = 12
+            arrow.fontColor = config.palette.teal
+            arrow.position = CGPoint(x: 14, y: 0)
+            arrow.verticalAlignmentMode = .center
+            root.addChild(arrow)
         case .swap:
             let label = SKLabelNode(fontNamed: "AvenirNext-Bold")
             label.text = "⇄"
             label.fontSize = 18
-            label.fontColor = .white
+            label.fontColor = config.palette.teal
             label.verticalAlignmentMode = .center
             root.addChild(label)
         }

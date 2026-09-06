@@ -35,6 +35,7 @@ struct ShootoutState: Equatable {
     var stats: ShootoutStats
     var phaseElapsed: TimeInterval
     var lastGoalToken: Int
+    var lastCueToken: Int
     var cueMessage: String?
     var liveViewerCount: Int
     
@@ -59,6 +60,7 @@ struct ShootoutState: Equatable {
             stats: ShootoutStats(),
             phaseElapsed: 0,
             lastGoalToken: 0,
+            lastCueToken: 0,
             cueMessage: nil,
             liveViewerCount: 128
         )
@@ -84,6 +86,7 @@ struct ShootoutState: Equatable {
     mutating func awardGoal() -> Bool {
         guard phase == .inPlay else { return false }
         lastGoalToken += 1
+        lastCueToken += 1
         homeScore += 1
         stats.homeGoals += 1
         phase = .goalScored
@@ -109,6 +112,7 @@ struct ShootoutState: Equatable {
         heldBallElapsed = 0
         shootMeter = nil
         cueMessage = reason
+        lastCueToken += 1
         
         if awayStops >= ShootoutState.stopsToWin {
             finishRound(winner: .away)

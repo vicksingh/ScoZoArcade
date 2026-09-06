@@ -121,22 +121,23 @@ final class ShootoutCourtNode: SKNode {
             CGPoint(x: geometry.size.width + 10, y: maxY),
             CGPoint(x: -10, y: maxY)
         ])
-        wall.fillColor = SKColor(hex: 0x0A3544)
-        wall.strokeColor = SKColor(hex: 0x00C2C7, alpha: 0.28)
-        wall.lineWidth = 2
+        wall.fillColor = SKColor(hex: 0x0C3848)
+        wall.strokeColor = SKColor(hex: 0x00D4D9, alpha: 0.35)
+        wall.lineWidth = 2.5
+        wall.glowWidth = 2
         wall.zPosition = ZLayer.surround
         addChild(wall)
         
-        placeWordmark(atCourt: CGPoint(x: -12, y: circleCenter.y), rotated: .pi / 2)
-        placeWordmark(atCourt: CGPoint(x: geometry.size.width + 12, y: circleCenter.y), rotated: -.pi / 2)
+        placeWordmark(atCourt: CGPoint(x: -14, y: circleCenter.y + 10), rotated: .pi / 2)
+        placeWordmark(atCourt: CGPoint(x: geometry.size.width + 14, y: circleCenter.y + 10), rotated: -.pi / 2)
         _ = palette
     }
     
     private func placeWordmark(atCourt point: CGPoint, rotated: CGFloat) {
         let label = SKLabelNode(fontNamed: "AvenirNextCondensed-Heavy")
         label.text = "SCOZO"
-        label.fontSize = 18
-        label.fontColor = SKColor(hex: 0x8FD7DC, alpha: 0.28)
+        label.fontSize = 16
+        label.fontColor = SKColor(hex: 0x4AEEF5, alpha: 0.22)
         label.verticalAlignmentMode = .center
         label.position = displayPoint(fromCourt: point)
         label.zRotation = rotated
@@ -164,8 +165,20 @@ final class ShootoutCourtNode: SKNode {
         crop.maskNode = mask
         
         if let courtTexture {
-            let courtSprite = SKSpriteNode(texture: courtTexture, size: CGSize(width: boardRect.width * 1.1, height: boardRect.height * 1.1))
+            let textureAspect: CGFloat = 1536.0 / 1024.0
+            let boardAspect = boardRect.width / boardRect.height
+            let spriteWidth: CGFloat
+            let spriteHeight: CGFloat
+            if textureAspect > boardAspect {
+                spriteHeight = boardRect.height * 1.15
+                spriteWidth = spriteHeight * textureAspect
+            } else {
+                spriteWidth = boardRect.width * 1.15
+                spriteHeight = spriteWidth / textureAspect
+            }
+            let courtSprite = SKSpriteNode(texture: courtTexture, size: CGSize(width: spriteWidth, height: spriteHeight))
             courtSprite.position = CGPoint(x: boardRect.midX, y: boardRect.midY)
+            courtSprite.zRotation = -.pi / 2
             crop.addChild(courtSprite)
         } else {
             let wood = SKSpriteNode(texture: woodTexture, size: CGSize(width: boardRect.width * 1.15, height: boardRect.height * 1.15))
@@ -182,8 +195,9 @@ final class ShootoutCourtNode: SKNode {
             CGPoint(x: 0, y: geometry.size.height)
         ])
         edge.fillColor = .clear
-        edge.strokeColor = courtTexture != nil ? SKColor(hex: 0x8FD7DC, alpha: 0.35) : SKColor(hex: 0x6A4A28, alpha: 0.85)
-        edge.lineWidth = courtTexture != nil ? 2 : 3
+        edge.strokeColor = SKColor(hex: 0x00D4D9, alpha: 0.45)
+        edge.lineWidth = 2.5
+        edge.glowWidth = 2
         edge.zPosition = ZLayer.court + 0.4
         addChild(edge)
     }
@@ -215,7 +229,7 @@ final class ShootoutCourtNode: SKNode {
         let cream = palette.cream
         let circleCenter = geometry.shootingCircleCenter(for: .home)
         
-        addCircle(center: circleCenter, radius: geometry.shootingCircleRadius, color: cream, width: 2.4)
+        addCircleGlow(center: circleCenter, radius: geometry.shootingCircleRadius, color: cream, width: 2.8)
         
         let apron: CGFloat = 50
         let minY = max(0, circleCenter.y - geometry.shootingCircleRadius - apron)
@@ -229,7 +243,42 @@ final class ShootoutCourtNode: SKNode {
         addPolyLine([
             CGPoint(x: 0, y: circleCenter.y - geometry.shootingCircleRadius - 8),
             CGPoint(x: geometry.size.width, y: circleCenter.y - geometry.shootingCircleRadius - 8)
-        ], color: cream.withAlphaComponent(0.5), width: 1.4, closed: false)
+        ], color: cream.withAlphaComponent(0.4), width: 1.2, closed: false)
+    }
+    
+    private func addCircleGlow(center: CGPoint, radius: CGFloat, color: SKColor, width: CGFloat) {
+        let steps = 36
+        var points: [CGPoint] = []
+        for i in 0...steps {
+            let a = CGFloat(i) / CGFloat(steps) * .pi * 2
+            points.append(CGPoint(x: center.x + cos(a) * radius, y: center.y + sin(a) * radius))
+        }
+        
+        let glowPath = CGMutablePath()
+        guard let first = points.first else { return }
+        glowPath.move(to: displayPoint(fromCourt: first))
+        for point in points.dropFirst() {
+            glowPath.addLine(to: displayPoint(fromCourt: point))
+        }
+        glowPath.closeSubpath()
+        
+        let glow = SKShapeNode(path: glowPath)
+        glow.strokeColor = color.withAlphaComponent(0.25)
+        glow.fillColor = .clear
+        glow.lineWidth = width + 4
+        glow.glowWidth = 6
+        glow.lineCap = .round
+        glow.zPosition = ZLayer.lines - 0.1
+        addChild(glow)
+        
+        let line = SKShapeNode(path: glowPath)
+        line.strokeColor = color
+        line.fillColor = .clear
+        line.lineWidth = width
+        line.lineCap = .round
+        line.glowWidth = 1
+        line.zPosition = ZLayer.lines
+        addChild(line)
     }
     
     private func addCircle(center: CGPoint, radius: CGFloat, color: SKColor, width: CGFloat) {

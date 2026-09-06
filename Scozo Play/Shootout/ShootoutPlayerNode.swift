@@ -50,21 +50,32 @@ final class ShootoutPlayerNode: SKNode {
     required init?(coder: NSCoder) { nil }
     
     private static func loadSelectionNode(config: GameConfig) -> SKNode {
-        if let texture = ShootoutAssets.selectionRingTexture() {
-            let sprite = SKSpriteNode(texture: texture, size: CGSize(width: 48, height: 18))
-            sprite.position = CGPoint(x: 0, y: -20)
-            sprite.colorBlendFactor = 1.0
-            sprite.color = config.palette.teal
-            return sprite
-        } else {
-            let shape = SKShapeNode(ellipseOf: CGSize(width: 38, height: 14))
-            shape.strokeColor = config.palette.teal
-            shape.fillColor = config.palette.teal.withAlphaComponent(0.16)
-            shape.lineWidth = 2.2
-            shape.glowWidth = 6
-            shape.position = CGPoint(x: 0, y: -20)
-            return shape
-        }
+        let container = SKNode()
+        container.position = CGPoint(x: 0, y: -20)
+        
+        let outerGlow = SKShapeNode(ellipseOf: CGSize(width: 46, height: 17))
+        outerGlow.strokeColor = config.palette.teal.withAlphaComponent(0.35)
+        outerGlow.fillColor = .clear
+        outerGlow.lineWidth = 6
+        outerGlow.glowWidth = 12
+        outerGlow.zPosition = -1
+        container.addChild(outerGlow)
+        
+        let ring = SKShapeNode(ellipseOf: CGSize(width: 40, height: 15))
+        ring.strokeColor = config.palette.teal
+        ring.fillColor = config.palette.teal.withAlphaComponent(0.18)
+        ring.lineWidth = 2.5
+        ring.glowWidth = 4
+        container.addChild(ring)
+        
+        let highlight = SKShapeNode(ellipseOf: CGSize(width: 32, height: 11))
+        highlight.strokeColor = SKColor(white: 1, alpha: 0.45)
+        highlight.fillColor = .clear
+        highlight.lineWidth = 1
+        highlight.position = CGPoint(x: 0, y: 1)
+        container.addChild(highlight)
+        
+        return container
     }
     
     private func assemble() {
